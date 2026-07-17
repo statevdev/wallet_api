@@ -1,0 +1,37 @@
+services:
+  app:
+    image: python:3.13-slim
+    working_dir: /app
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    command: >
+      sh -c "pip install --no-cache-dir -r requirements.txt &&
+            alembic upgrade head &&
+            fastapi dev app/main.py --host 0.0.0.0"
+    depends_on:
+      - db
+      - db_test
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://wallet_user:password@db:5432/wallet_api}
+      TEST_DATABASE_URL: ${TEST_DATABASE_URL:-postgresql+psycopg://wallet_user:password@db_test:5432/wallet_api_test}
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-wallet_api}
+      POSTGRES_USER: ${POSTGRES_USER:-wallet_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+  db_test:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: ${TEST_POSTGRES_DB:-wallet_api_test}
+      POSTGRES_USER: ${TEST_POSTGRES_USER:-wallet_user}
+      POSTGRES_PASSWORD: ${TEST_POSTGRES_PASSWORD:-password}
+    ports:
+      - "${TEST_POSTGRES_PORT:-5433}:5432"
+
+volumes:
+  postgres_data:
