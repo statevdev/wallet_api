@@ -10,8 +10,10 @@ services:
       sh -c "alembic upgrade head &&
             fastapi dev app/main.py --host 0.0.0.0"
     depends_on:
-      - db
-      - db_test
+      db:
+        condition: service_healthy
+      db_test:
+        condition: service_started
     environment:
       DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://wallet_user:password@db:5432/wallet_api}
       TEST_DATABASE_URL: ${TEST_DATABASE_URL:-postgresql+psycopg://wallet_user:password@db_test:5432/wallet_api_test}
@@ -23,6 +25,11 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wallet_user -d wallet_api"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
   db_test:
     image: postgres:17
     environment:
