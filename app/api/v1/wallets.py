@@ -1,4 +1,5 @@
 import uuid
+from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
@@ -9,6 +10,8 @@ from app.models.wallet import Wallet
 from app.schemas.wallet import OperationType, WalletOperationRequest, WalletResponse
 
 router = APIRouter(prefix="/wallets", tags=["wallets"])
+
+MAX_WALLET_BALANCE = Decimal("9999999999999999.99")
 
 
 @router.post("", response_model=WalletResponse, status_code=201)
@@ -45,6 +48,11 @@ def operate_wallet(wallet_id: uuid.UUID, operation: WalletOperationRequest, db: 
         raise HTTPException(status_code=404, detail="Wallet not found")
 
     if operation.operation_type == OperationType.DEPOSIT:
+        new_balance = wallet.balance + operation.amount
+
+        if new_balance > MAX_WALLET_BALANCE:
+            raise HTTPException(status_code=400, detail="Balance limit exceeded")
+
         wallet.balance += operation.amount
     elif operation.operation_type == OperationType.WITHDRAW:
         if wallet.balance < operation.amount:

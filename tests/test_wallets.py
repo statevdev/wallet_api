@@ -162,6 +162,34 @@ def test_wallet_operation_with_too_many_digits(client):
     assert response.status_code == 422
 
 
+def test_wallet_deposit_over_balance_limit(client):
+    create_response = client.post("/api/v1/wallets")
+    wallet_id = create_response.json()["id"]
+
+    client.post(
+        f"/api/v1/wallets/{wallet_id}/operation",
+        json={
+            "operation_type": "DEPOSIT",
+            "amount": "9999999999999999.99",
+        },
+    )
+
+    response = client.post(
+        f"/api/v1/wallets/{wallet_id}/operation",
+        json={
+            "operation_type": "DEPOSIT",
+            "amount": "0.01",
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Balance limit exceeded"
+
+    response = client.get(f"/api/v1/wallets/{wallet_id}")
+    assert response.status_code == 200
+    assert response.json()["balance"] == "9999999999999999.99"
+
+
 def test_many_clients_withdraw_from_same_wallet(client):
     create_response = client.post("/api/v1/wallets")
     wallet_id = create_response.json()["id"]
