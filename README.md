@@ -20,7 +20,7 @@ REST API для управления кошельками: создание ко
 Запустить приложение и базу данных:
 
 ```bash
-docker compose up -d
+docker compose up --build
 ```
 
 API будет доступно по адресу:

@@ -1,14 +1,13 @@
 services:
   app:
-    image: python:3.13-slim
+    build: .
     working_dir: /app
     volumes:
       - .:/app
     ports:
       - "8000:8000"
     command: >
-      sh -c "pip install --no-cache-dir -r requirements.txt &&
-            alembic upgrade head &&
+      sh -c "alembic upgrade head &&
             fastapi dev app/main.py --host 0.0.0.0"
     depends_on:
       - db
