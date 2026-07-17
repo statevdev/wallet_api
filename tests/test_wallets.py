@@ -31,6 +31,21 @@ def test_get_wallet(client):
     assert data["balance"] == "0.00"
 
 
+def test_list_wallets(client):
+    first_response = client.post("/api/v1/wallets")
+    second_response = client.post("/api/v1/wallets")
+    first_wallet_id = first_response.json()["id"]
+    second_wallet_id = second_response.json()["id"]
+
+    response = client.get("/api/v1/wallets")
+
+    assert response.status_code == 200
+
+    wallet_ids = {wallet["id"] for wallet in response.json()}
+    assert first_wallet_id in wallet_ids
+    assert second_wallet_id in wallet_ids
+
+
 def test_deposit_wallet(client):
     create_response = client.post("/api/v1/wallets")
     wallet_id = create_response.json()["id"]

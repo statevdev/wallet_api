@@ -22,6 +22,11 @@ def create_wallet(db: Session = Depends(get_db)):
     return wallet
 
 
+@router.get("", response_model=list[WalletResponse])
+def list_wallets(db: Session = Depends(get_db)):
+    return db.scalars(select(Wallet)).all()
+
+
 @router.get("/{wallet_id}", response_model=WalletResponse)
 def get_wallet(wallet_id: uuid.UUID, db: Session = Depends(get_db)):
     wallet = db.get(Wallet, wallet_id)
