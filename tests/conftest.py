@@ -5,6 +5,7 @@ from alembic import command
 from alembic.config import Config
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
+from sqlalchemy.engine import make_url
 from sqlalchemy.orm import sessionmaker
 
 TEST_DATABASE_URL = os.getenv(
@@ -13,6 +14,9 @@ TEST_DATABASE_URL = os.getenv(
 )
 
 os.environ["DATABASE_URL"] = TEST_DATABASE_URL
+
+if make_url(TEST_DATABASE_URL).database != "wallet_api_test":
+    raise RuntimeError("Tests must run only against wallet_api_test database")
 
 engine = create_engine(TEST_DATABASE_URL)
 
