@@ -22,7 +22,7 @@ TestingSessionLocal = sessionmaker(
     autocommit=False,
 )
 
-from app.database import get_db
+from app.database import Base, get_db
 from app.main import app
 
 
@@ -36,6 +36,13 @@ def prepare_database():
     yield
 
     command.downgrade(alembic_config, "base")
+
+
+@pytest.fixture(autouse=True)
+def clean_database():
+    with engine.begin() as connection:
+        for table in reversed(Base.metadata.sorted_tables):
+            connection.execute(table.delete())
 
 
 @pytest.fixture()
