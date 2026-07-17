@@ -46,6 +46,22 @@ def test_list_wallets(client):
     assert second_wallet_id in wallet_ids
 
 
+def test_list_wallets_with_pagination(client):
+    wallet_ids = [
+        client.post("/api/v1/wallets").json()["id"]
+        for _ in range(3)
+    ]
+    sorted_wallet_ids = sorted(wallet_ids)
+
+    response = client.get("/api/v1/wallets", params={"limit": 1, "offset": 1})
+
+    assert response.status_code == 200
+
+    data = response.json()
+    assert len(data) == 1
+    assert data[0]["id"] == sorted_wallet_ids[1]
+
+
 def test_deposit_wallet(client):
     create_response = client.post("/api/v1/wallets")
     wallet_id = create_response.json()["id"]
