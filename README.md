@@ -43,6 +43,12 @@ http://localhost:8000/docs
 POST /api/v1/wallets
 ```
 
+Получить список кошельков:
+
+```http
+GET /api/v1/wallets
+```
+
 Получить баланс кошелька:
 
 ```http
