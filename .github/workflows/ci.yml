@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: wallet_api_test
+          POSTGRES_USER: wallet_user
+          POSTGRES_PASSWORD: password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U wallet_user -d wallet_api_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql+psycopg://wallet_user:password@localhost:5432/wallet_api_test
+      TEST_DATABASE_URL: postgresql+psycopg://wallet_user:password@localhost:5432/wallet_api_test
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Ruff
+        run: ruff check .
+
+      - name: Tests
+        run: pytest
