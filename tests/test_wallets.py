@@ -1,0 +1,165 @@
+from collections import Counter
+from concurrent.futures import ThreadPoolExecutor
+from threading import Barrier
+from uuid import uuid4
+
+from fastapi.testclient import TestClient
+
+from app.main import app
+
+
+def test_create_wallet(client):
+    response = client.post("/api/v1/wallets")
+
+    assert response.status_code == 201
+
+    data = response.json()
+    assert "id" in data
+    assert data["balance"] == "0.00"
+
+
+def test_get_wallet(client):
+    create_response = client.post("/api/v1/wallets")
+    wallet_id = create_response.json()["id"]
+
+    response = client.get(f"/api/v1/wallets/{wallet_id}")
+
+    assert response.status_code == 200
+
+    data = response.json()
+    assert data["id"] == wallet_id
+    assert data["balance"] == "0.00"
+
+
+def test_deposit_wallet(client):
+    create_response = client.post("/api/v1/wallets")
+    wallet_id = create_response.json()["id"]
+
+    response = client.post(
+        f"/api/v1/wallets/{wallet_id}/operation",
+        json={
+            "operation_type": "DEPOSIT",
+            "amount": 1000,
+        },
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+    assert data["id"] == wallet_id
+    assert data["balance"] == "1000.00"
+
+
+def test_withdraw_wallet(client):
+    create_response = client.post("/api/v1/wallets")
+    wallet_id = create_response.json()["id"]
+
+    client.post(
+        f"/api/v1/wallets/{wallet_id}/operation",
+        json={
+            "operation_type": "DEPOSIT",
+            "amount": 1000,
+        },
+    )
+
+    response = client.post(
+        f"/api/v1/wallets/{wallet_id}/operation",
+        json={
+            "operation_type": "WITHDRAW",
+            "amount": 300,
+        },
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+    assert data["id"] == wallet_id
+    assert data["balance"] == "700.00"
+
+
+def test_withdraw_wallet_insufficient_funds(client):
+    create_response = client.post("/api/v1/wallets")
+    wallet_id = create_response.json()["id"]
+
+    response = client.post(
+        f"/api/v1/wallets/{wallet_id}/operation",
+        json={
+            "operation_type": "WITHDRAW",
+            "amount": 1000,
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Insufficient funds"
+
+
+def test_get_wallet_not_found(client):
+    wallet_id = uuid4()
+
+    response = client.get(f"/api/v1/wallets/{wallet_id}")
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Wallet not found"
+
+
+def test_wallet_operation_with_invalid_operation_type(client):
+    create_response = client.post("/api/v1/wallets")
+    wallet_id = create_response.json()["id"]
+
+    response = client.post(
+        f"/api/v1/wallets/{wallet_id}/operation",
+        json={
+            "operation_type": "TRANSFER",
+            "amount": 1000,
+        },
+    )
+
+    assert response.status_code == 422
+
+
+def test_many_clients_withdraw_from_same_wallet(client):
+    create_response = client.post("/api/v1/wallets")
+    wallet_id = create_response.json()["id"]
+
+    clients_count = 50
+    initial_balance = 1000
+    withdraw_amount = 100
+    expected_success_count = 10
+    expected_error_count = clients_count - expected_success_count
+    expected_balance = "0.00"
+
+    client.post(
+        f"/api/v1/wallets/{wallet_id}/operation",
+        json={
+            "operation_type": "DEPOSIT",
+            "amount": initial_balance,
+        },
+    )
+
+    start = Barrier(clients_count)
+
+    def withdraw():
+        start.wait()
+
+        with TestClient(app) as local_client:
+            return local_client.post(
+                f"/api/v1/wallets/{wallet_id}/operation",
+                json={
+                    "operation_type": "WITHDRAW",
+                    "amount": withdraw_amount,
+                },
+            )
+
+    with ThreadPoolExecutor(max_workers=clients_count) as executor:
+        futures = [executor.submit(withdraw) for _ in range(clients_count)]
+        responses = [future.result() for future in futures]
+
+    statuses = [response.status_code for response in responses]
+    status_counts = Counter(statuses)
+
+    assert status_counts[200] == expected_success_count
+    assert status_counts[400] == expected_error_count
+
+    response = client.get(f"/api/v1/wallets/{wallet_id}")
+    assert response.status_code == 200
+    assert response.json()["balance"] == expected_balance
