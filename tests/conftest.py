@@ -1,6 +1,8 @@
 import os
 
 import pytest
+from alembic import command
+from alembic.config import Config
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -20,21 +22,20 @@ TestingSessionLocal = sessionmaker(
     autocommit=False,
 )
 
-from app.database import Base, get_db
+from app.database import get_db
 from app.main import app
 
 
 @pytest.fixture(scope="session", autouse=True)
 def prepare_database():
-    with engine.begin() as connection:
-        connection.exec_driver_sql("DROP TABLE IF EXISTS wallets CASCADE")
+    alembic_config = Config("alembic.ini")
 
-    Base.metadata.create_all(bind=engine)
+    command.downgrade(alembic_config, "base")
+    command.upgrade(alembic_config, "head")
 
     yield
 
-    with engine.begin() as connection:
-        connection.exec_driver_sql("DROP TABLE IF EXISTS wallets CASCADE")
+    command.downgrade(alembic_config, "base")
 
 
 @pytest.fixture()
