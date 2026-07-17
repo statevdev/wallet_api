@@ -33,26 +33,17 @@ def get_wallet(wallet_id: uuid.UUID, db: Session = Depends(get_db)):
 
 
 @router.post("/{wallet_id}/operation", response_model=WalletResponse)
-def operate_wallet(
-    wallet_id: uuid.UUID,
-    operation: WalletOperationRequest,
-    db: Session = Depends(get_db),
-):
-    wallet = db.execute(
-        select(Wallet).where(Wallet.id == wallet_id).with_for_update()
-    ).scalar_one_or_none()
+def operate_wallet(wallet_id: uuid.UUID, operation: WalletOperationRequest, db: Session = Depends(get_db)):
+    wallet = db.execute(select(Wallet).where(Wallet.id == wallet_id).with_for_update()).scalar_one_or_none()
 
     if wallet is None:
         raise HTTPException(status_code=404, detail="Wallet not found")
 
     if operation.operation_type == OperationType.DEPOSIT:
         wallet.balance += operation.amount
-    else:
+    elif operation.operation_type == OperationType.WITHDRAW:
         if wallet.balance < operation.amount:
-            raise HTTPException(
-                status_code=400,
-                detail="Insufficient funds",
-            )
+            raise HTTPException(status_code=400, detail="Insufficient funds")
 
         wallet.balance -= operation.amount
 

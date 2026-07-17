@@ -19,5 +19,5 @@ class Wallet(Base):
     balance: Mapped[Decimal] = mapped_column(
         Numeric(18, 2),
         nullable=False,
-        default=Decimal("0"),
+        default=Decimal("0.00"),
     )
