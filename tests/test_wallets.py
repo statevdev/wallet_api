@@ -117,6 +117,36 @@ def test_wallet_operation_with_invalid_operation_type(client):
     assert response.status_code == 422
 
 
+def test_wallet_operation_with_too_many_decimal_places(client):
+    create_response = client.post("/api/v1/wallets")
+    wallet_id = create_response.json()["id"]
+
+    response = client.post(
+        f"/api/v1/wallets/{wallet_id}/operation",
+        json={
+            "operation_type": "DEPOSIT",
+            "amount": "0.009",
+        },
+    )
+
+    assert response.status_code == 422
+
+
+def test_wallet_operation_with_too_many_digits(client):
+    create_response = client.post("/api/v1/wallets")
+    wallet_id = create_response.json()["id"]
+
+    response = client.post(
+        f"/api/v1/wallets/{wallet_id}/operation",
+        json={
+            "operation_type": "DEPOSIT",
+            "amount": "10000000000000000.00",
+        },
+    )
+
+    assert response.status_code == 422
+
+
 def test_many_clients_withdraw_from_same_wallet(client):
     create_response = client.post("/api/v1/wallets")
     wallet_id = create_response.json()["id"]

@@ -12,7 +12,12 @@ class OperationType(StrEnum):
 
 class WalletOperationRequest(BaseModel):
     operation_type: OperationType = Field(examples=[OperationType.DEPOSIT])
-    amount: Decimal = Field(gt=0, examples=["1000.00"])
+    amount: Decimal = Field(
+        gt=0,
+        max_digits=18,
+        decimal_places=2,
+        examples=["1000.00"],
+    )
 
 
 class WalletResponse(BaseModel):
